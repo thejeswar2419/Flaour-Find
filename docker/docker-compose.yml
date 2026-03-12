@@ -1,0 +1,136 @@
+services:
+
+  # ==============================
+  # MongoDB for User Service
+  # ==============================
+  mongo-user:
+    image: mongo:6
+    container_name: mongo-user
+    restart: always
+    volumes:
+      - mongo_user_data:/data/db
+    networks:
+      - food-network
+
+  # ==============================
+  # MongoDB for Restaurant Service
+  # ==============================
+  mongo-restaurant:
+    image: mongo:6
+    container_name: mongo-restaurant
+    restart: always
+    volumes:
+      - mongo_restaurant_data:/data/db
+    networks:
+      - food-network
+
+  # ==============================
+  # MongoDB for Interaction Service (NEW)
+  # ==============================
+  mongo-interaction:
+    image: mongo:6
+    container_name: mongo-interaction
+    restart: always
+    volumes:
+      - mongo_interaction_data:/data/db
+    networks:
+      - food-network
+
+  # ==============================
+  # User Service
+  # ==============================
+  user-service:
+    build: ../services/user-service
+    container_name: user-service
+    restart: always
+    depends_on:
+      - mongo-user
+    environment:
+      - MONGO_URI=mongodb://mongo-user:27017/userDB
+      - JWT_SECRET=your_super_secret_key_change_this_in_production
+      - PORT=5001
+      - RESTAURANT_SERVICE_URL=http://restaurant-service:5002
+    networks:
+      - food-network
+
+  # ==============================
+  # Restaurant Service
+  # ==============================
+  restaurant-service:
+    build: ../services/restaurant-service
+    container_name: restaurant-service
+    restart: always
+    depends_on:
+      - mongo-restaurant
+    environment:
+      - MONGO_URI=mongodb://mongo-restaurant:27017/restaurantDB
+      - PORT=5002
+    networks:
+      - food-network
+
+  # ==============================
+  # Interaction Service (NEW)
+  # ==============================
+  interaction-service:
+    build: ../services/interaction-service
+    container_name: interaction-service
+    restart: always
+    depends_on:
+      - mongo-interaction
+    environment:
+      - MONGO_URI=mongodb://mongo-interaction:27017/interactionDB
+      - PORT=5003
+    networks:
+      - food-network
+
+  # ==============================
+  # Recommendation (AI) Service
+  # ==============================
+  recommendation-service:
+    build: ../services/recommendation-service
+    container_name: recommendation-service
+    restart: always
+    environment:
+      - RESTAURANT_SERVICE_URL=http://restaurant-service:5002
+      - INTERACTION_SERVICE_URL=http://interaction-service:5003
+    networks:
+      - food-network
+
+  # ==============================
+  # API Gateway (ONLY exposed service)
+  # ==============================
+  gateway:
+    build: ../gateway
+    container_name: gateway
+    restart: always
+    depends_on:
+      - user-service
+      - restaurant-service
+      - recommendation-service
+      - interaction-service
+    ports:
+      - "5000:5000"
+    environment:
+      - JWT_SECRET=your_super_secret_key_change_this_in_production
+      - PORT=5000
+      - USER_SERVICE_URL=http://user-service:5001
+      - RESTAURANT_SERVICE_URL=http://restaurant-service:5002
+      - INTERACTION_SERVICE_URL=http://interaction-service:5003
+      - RECOMMENDATION_SERVICE_URL=http://recommendation-service:8000
+    networks:
+      - food-network
+
+# ==============================
+# Persistent Volumes
+# ==============================
+volumes:
+  mongo_user_data:
+  mongo_restaurant_data:
+  mongo_interaction_data:
+
+# ==============================
+# Shared Network
+# ==============================
+networks:
+  food-network:
+    driver: bridge

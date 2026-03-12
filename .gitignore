@@ -1,0 +1,14 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn.lock
+package-lock.json
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE / OS / Cursor
+.vscode/
+.DS_Store
+.cursor/
